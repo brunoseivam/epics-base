@@ -174,8 +174,6 @@ static parserFrame* allocFrame(void)
 static void freeFrame(parserFrame *frame)
 {
     if(frame) {
-        if(frame->prev)
-            macPopScope(macHandle);
         if(frame->state)
             yy_delete_buffer(frame->state);
         free(frame->linebuf);
@@ -276,7 +274,6 @@ static long dbReadCOM(DBBASE **ppdbbase,const char *filename, FILE *fp,
     if(substitutions) {
         macParseDefns(macHandle,(char *)substitutions,&macPairs);
         if(macPairs) {
-            printf("XXXX\n");
             macInstallMacros(macHandle,macPairs);
             free((void *)macPairs);
         }
@@ -367,7 +364,7 @@ long dbReadDatabase(DBBASE **ppdbbase,const char *filename,
 long dbReadDatabaseFP(DBBASE **ppdbbase,FILE *fp,
                       const char *path,const char *substitutions)
 {return (dbReadCOM(ppdbbase,0,fp,path,substitutions));}
-#define YYDEBUG 1
+
 static int db_yyinput(char *buf, int max_size)
 {
     while(!yyAbort && fileStack && fileStack->bufidx == fileStack->bufsize) {
@@ -402,10 +399,6 @@ static int db_yyinput(char *buf, int max_size)
             // assume EOF
             if(dbStaticDebug)
                 printf("db_yyinput EOF %s\n", frame->filename);
-//            fileStack = frame->prev;
-//            if(fileStack)
-//                yy_switch_to_buffer(fileStack->state);
-//            freeFrame(frame);
             return 0;
         }
     }
