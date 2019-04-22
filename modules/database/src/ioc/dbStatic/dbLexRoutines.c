@@ -63,7 +63,7 @@ static int db_yyinput(char *buf,int max_size);
 static void dbIncludePrint(void);
 static void dbPathCmd(char *path);
 static void dbAddPathCmd(char *path);
-static void dbIncludeNew(char *include_file);
+static void dbIncludeNew(char *include_file, const char *substitutions);
 static void dbMenuHead(char *name);
 static void dbMenuChoice(char *name,char *value);
 static void dbMenuBody(void);
@@ -459,10 +459,20 @@ static void dbAddPathCmd(char *path)
     dbAddPath(pdbbase,path);
 }
 
-static void dbIncludeNew(char *filename)
+static void dbIncludeNew(char *filename, const char *substitutions)
 {
     char *fullfilename = macDefExpand(filename, macHandle);
     parserFrame *frame = NULL;
+    char **pairs = NULL;
+
+    if(substitutions) {
+        if(macParseDefns(NULL, substitutions, &pairs)<0) {
+            fprintf(stderr, "%s:%d incorrect macro definitions\n",
+                    frame->filename, frame->lineNum);
+            yyerrorAbort("Invalid macro definitions");
+            return;
+        }
+    }
 
     if(fullfilename) {
         frame = dbOpenFile(pdbbase, fullfilename);
@@ -481,6 +491,9 @@ static void dbIncludeNew(char *filename)
     yy_switch_to_buffer(fileStack->state);
 
     macPushScope(macHandle);
+    if(pairs) {
+        macInstallMacros(macHandle, pairs);
+    }
 }
 
 static void dbMenuHead(char *name)

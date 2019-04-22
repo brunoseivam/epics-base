@@ -64,7 +64,12 @@ database_item:	include
 include:	tokenINCLUDE tokenSTRING
 {
 	if(dbStaticDebug>2) printf("include : %s\n",$2);
-	dbIncludeNew($2); dbmfFree($2);
+    dbIncludeNew($2,NULL); dbmfFree($2);
+}
+    | tokenINCLUDE tokenSTRING tokenSTRING
+{
+    if(dbStaticDebug>2) printf("include : %s w/ %s\n",$2,$3);
+    dbIncludeNew($2,$3); dbmfFree($2); dbmfFree($3);
 };
 
 path:	tokenPATH tokenSTRING
