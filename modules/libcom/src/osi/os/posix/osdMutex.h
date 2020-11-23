@@ -8,3 +8,26 @@
 * in file LICENSE that is included with this distribution.
 \*************************************************************************/
 /* for a pure posix implementation no osdMutex.h definitions are needed*/
+#ifndef osdMutexh
+#define osdMutexh
+
+#include <pthread.h>
+
+#include "shareLib.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+typedef enum {posixMutexDefault = 0, posixMutexRecursive = 1} EpicsPosixMutexProperty;
+
+/* Returns NULL if requested set of properties is not supported */
+epicsShareFunc pthread_mutexattr_t * epicsShareAPI epicsPosixMutexAttrGet (EpicsPosixMutexProperty);
+epicsShareFunc int                   epicsShareAPI epicsPosixMutexInit    (pthread_mutex_t *,EpicsPosixMutexProperty);
+epicsShareFunc void                  epicsShareAPI epicsPosixMutexMustInit(pthread_mutex_t *,EpicsPosixMutexProperty);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* osdMutexh */

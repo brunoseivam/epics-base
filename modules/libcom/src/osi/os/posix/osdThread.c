@@ -327,10 +327,10 @@ static void once(void)
     int status;
 
     pthread_key_create(&getpthreadInfo,0);
-    status = pthread_mutex_init(&onceLock,0);
-    checkStatusQuit(status,"pthread_mutex_init","epicsThreadInit");
-    status = pthread_mutex_init(&listLock,0);
-    checkStatusQuit(status,"pthread_mutex_init","epicsThreadInit");
+    status = epicsPosixMutexInit(&onceLock,posixMutexDefault);
+    checkStatusQuit(status,"epicsPosixMutexInit","epicsThreadInit");
+    status = epicsPosixMutexInit(&listLock,posixMutexDefault);
+    checkStatusQuit(status,"epicsPosixMutexInit","epicsThreadInit");
     pcommonAttr = calloc(1,sizeof(commonAttr));
     if(!pcommonAttr) checkStatusOnceQuit(errno,"calloc","epicsThreadInit");
     status = pthread_attr_init(&pcommonAttr->attr);

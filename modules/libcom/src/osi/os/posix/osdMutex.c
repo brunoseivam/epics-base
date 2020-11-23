@@ -19,12 +19,14 @@
 #include <errno.h>
 #include <unistd.h>
 #include <pthread.h>
+#include <ctype.h>
 
 #include "epicsMutex.h"
 #include "cantProceed.h"
 #include "epicsTime.h"
 #include "errlog.h"
 #include "epicsAssert.h"
+#include "envDefs.h"
 
 #define checkStatus(status,message) \
     if((status)) { \
@@ -38,6 +40,105 @@
         cantProceed((method)); \
     }
 
+/* Until these can be demonstrated to work leave them undefined*/
+/* On solaris 8 _POSIX_THREAD_PRIO_INHERIT fails*/
+#if defined(DONT_USE_POSIX_THREAD_PRIORITY_SCHEDULING)
+#undef _POSIX_THREAD_PRIO_INHERIT
+#endif
+
+#if defined(_XOPEN_SOURCE) && (_XOPEN_SOURCE)>=500
+#define HAVE_RECURSIVE_MUTEX
+#else
+#undef  HAVE_RECURSIVE_MUTEX
+#endif
+
+/* Global var - pthread_once does not support passing args but it is more efficient
+ * then epicsThreadOnce which always acquires a mutex.
+ */
+static pthread_mutexattr_t globalAttrDefault;
+#ifdef HAVE_RECURSIVE_MUTEX
+static pthread_mutexattr_t globalAttrRecursive;
+#endif
+static pthread_once_t      globalAttrInitOnce = PTHREAD_ONCE_INIT;
+
+static void setAttrDefaults(pthread_mutexattr_t *a)
+{
+    int status;
+
+    status = pthread_mutexattr_init(a);
+    checkStatusQuit(status,"pthread_mutexattr_init","setAttrDefaults");
+
+    {
+        const char *p = envGetConfigParamPtr(&EPICS_MUTEX_USE_PRIORITY_INHERITANCE);
+        char        c = p ? toupper(p[0]) : 'N';
+        if ( 'T' == c || 'Y' == c || '1' == c ) {
+#if defined _POSIX_THREAD_PRIO_INHERIT
+            status = pthread_mutexattr_setprotocol(a, PTHREAD_PRIO_INHERIT);
+            if (errVerbose) checkStatus(status, "pthread_mutexattr_setprotocol(PTHREAD_PRIO_INHERIT)");
+#ifndef HAVE_RECURSIVE_MUTEX
+            /* The implementation based on a condition variable below does not support 
+             * priority-inheritance!
+             */
+            fprintf(stderr,"WARNING: PRIORITY-INHERITANCE UNAVAILABLE for epicsMutex\n");
+#endif
+#else
+            fprintf(stderr,"WARNING: PRIORITY-INHERITANCE UNAVAILABLE OR NOT COMPILED IN\n");
+#endif
+        }
+    }
+}
+
+static void globalAttrInit()
+{
+    int status;
+
+    setAttrDefaults( &globalAttrDefault );
+
+#ifdef HAVE_RECURSIVE_MUTEX
+    setAttrDefaults( &globalAttrRecursive );
+    status = pthread_mutexattr_settype(&globalAttrRecursive, PTHREAD_MUTEX_RECURSIVE);
+    checkStatusQuit(status, "pthread_mutexattr_settype(PTHREAD_MUTEX_RECURSIVE)", "globalAttrInit");
+#endif
+}
+
+epicsShareFunc pthread_mutexattr_t * epicsShareAPI epicsPosixMutexAttrGet (EpicsPosixMutexProperty p)
+{
+    int status;
+
+    status = pthread_once( &globalAttrInitOnce, globalAttrInit );
+    checkStatusQuit(status,"pthread_once","epicsPosixMutexAttrGet");
+    switch ( p ) {
+        default:
+        case posixMutexDefault:
+            break;
+        case posixMutexRecursive:
+#ifdef HAVE_RECURSIVE_MUTEX
+            return &globalAttrRecursive;
+#else
+            return 0;
+#endif
+    }
+    return &globalAttrDefault;
+}
+
+epicsShareFunc int epicsShareAPI epicsPosixMutexInit (pthread_mutex_t *m, EpicsPosixMutexProperty p)
+{
+    pthread_mutexattr_t *atts = epicsPosixMutexAttrGet( p );
+
+    if ( ! atts )
+        return ENOTSUP;
+    return pthread_mutex_init(m, atts);
+}
+
+epicsShareFunc void epicsShareAPI epicsPosixMutexMustInit (pthread_mutex_t *m, EpicsPosixMutexProperty p)
+{
+    int status;
+
+    status = epicsPosixMutexInit(m, p);
+    checkStatusQuit(status,"pthread_mutex_init","epicsMustInitPosixMutex");
+}
+
+
 static int mutexLock(pthread_mutex_t *id)
 {
     int status;
@@ -48,11 +149,6 @@ static int mutexLock(pthread_mutex_t *id)
     return status;
 }
 
-/* Until these can be demonstrated to work leave them undefined*/
-/* On solaris 8 _POSIX_THREAD_PRIO_INHERIT fails*/
-#undef _POSIX_THREAD_PROCESS_SHARED
-#undef _POSIX_THREAD_PRIO_INHERIT
-
 /* Two completely different implementations are provided below
  * If support is available for PTHREAD_MUTEX_RECURSIVE then
  *      only pthread_mutex is used.
@@ -61,10 +157,9 @@ static int mutexLock(pthread_mutex_t *id)
  */
 
 
-#if defined(_XOPEN_SOURCE) && (_XOPEN_SOURCE)>=500
+#ifdef HAVE_RECURSIVE_MUTEX
 typedef struct epicsMutexOSD {
     pthread_mutex_t     lock;
-    pthread_mutexattr_t mutexAttr;
 } epicsMutexOSD;
 
 epicsMutexOSD * epicsMutexOsdCreate(void) {
@@ -73,32 +168,12 @@ epicsMutexOSD * epicsMutexOsdCreate(void) {
 
     pmutex = calloc(1, sizeof(*pmutex));
     if(!pmutex)
-        goto fail;
+        return NULL;
 
-    status = pthread_mutexattr_init(&pmutex->mutexAttr);
-    if (status)
-        goto fail;
+    status = epicsPosixMutexInit(&pmutex->lock, posixMutexRecursive);
+    if (!status)
+        return pmutex;
 
-#if defined(_POSIX_THREAD_PRIO_INHERIT) && _POSIX_THREAD_PRIO_INHERIT > 0
-    status = pthread_mutexattr_setprotocol(&pmutex->mutexAttr,
-        PTHREAD_PRIO_INHERIT);
-    if (errVerbose) checkStatus(status, "pthread_mutexattr_setprotocal");
-#endif /*_POSIX_THREAD_PRIO_INHERIT*/
-
-    status = pthread_mutexattr_settype(&pmutex->mutexAttr,
-        PTHREAD_MUTEX_RECURSIVE);
-    checkStatus(status, "pthread_mutexattr_settype");
-    if (status)
-        goto fail;
-
-    status = pthread_mutex_init(&pmutex->lock, &pmutex->mutexAttr);
-    if (status)
-        goto dattr;
-    return pmutex;
-
-dattr:
-    pthread_mutexattr_destroy(&pmutex->mutexAttr);
-fail:
     free(pmutex);
     return NULL;
 }
@@ -109,8 +184,6 @@ void epicsMutexOsdDestroy(struct epicsMutexOSD * pmutex)
 
     status = pthread_mutex_destroy(&pmutex->lock);
     checkStatus(status, "pthread_mutex_destroy");
-    status = pthread_mutexattr_destroy(&pmutex->mutexAttr);
-    checkStatus(status, "pthread_mutexattr_destroy");
     free(pmutex);
 }
 
@@ -158,15 +231,83 @@ void epicsMutexOsdShow(struct epicsMutexOSD * pmutex, unsigned int level)
     printf("    pthread_mutex_t* uaddr=%p\n", &pmutex->lock);
 }
 
-#else /*defined(_XOPEN_SOURCE) && (_XOPEN_SOURCE)>=500 */
+#else /* #ifdef HAVE_RECURSIVE_MUTEX */
+
+/* The standard EPICS implementation of a recursive mutex (in absence of native support)
+ * does not allow for priority-inheritance:
+ * a low priority thread may hold the ('soft-') mutex, i.e., may be preempted in the
+ * critical section without the high-priority thread noticing (because the HP-thread is
+ * sleeping on the condvar and not waiting for the mutex).
+ *
+ * A better implementation could be:
+ *
+ *  struct epicsMutexOSD {
+ *    pthread_mutex_t   mtx;
+ *    atomic<pthread_t> owner;
+ *    unsigned          count;
+ *  };
+ *
+ * void mutexLock(struct epicsMutexOSD *m)
+ * {
+ *   pthread_t currentOwner = atomic_load(&m->owner, acquire);   
+ *
+ *   if ( pthread_equal(currentOwner, pthread_self()) ) {
+ *     m->count++;
+ *     return;
+ *   }
+ *
+ *   pthread_mutex_lock(&m->mtx);
+ *   // ordering of this write to 'owner' is irrelevant since it doesn't matter
+ *   // if another thread performing the test above sees the 'invalid' or already
+ *   // 'our' TID. 
+ *   atomic_store(&m->owner, pthread_self(), relaxed);
+ *   // 'count' is only ever accessed with 'mtx' held
+ *   m->count = 1;
+ * }
+ *
+ * void mutexUnlock(struct epicsMutexOSD *o)
+ * {
+ *   o->count--;
+ *   if ( o->count == 0 ) {
+ *     // acquire-release ordering between here and 'mutexLock' above'!
+ *     // Theoretically (but extremely unlikely) the executing thread
+ *     // may go away and a newly created thread with the same (recycled)
+ *     // TID on a different CPU could still see the old TID in mutexLock
+ *     // and believe it already owns the mutex...
+ *     atomic_store(&m->owner, invalid_thread_id, release);
+ *     pthread_mutex_unlock( &o->mtx );
+ *   }
+ *
+ * The 'invalid_thread_id' could be an ID of a permanently suspended dummy thread
+ * (pthread does not define a 'NULL' ID and you don't want to get into an 'ABA'-sort
+ * of situation where 'mutexLock' believes to be the current owner because the 'invalid'
+ * ID is a 'recycled' thread id).
+ *
+ * Without atomic operations we'd have to introduce a second mutex to protect the 'owner'
+ * member ('count' is only ever accessed with the mutex held). But that would then
+ * lead to two extra lock/unlock pairs in 'mutexLock'. A dirty version would ignore that
+ * and rely on pthread_t fitting in a CPU word and the acquire/release corner-case mentioned
+ * above to never happen. Plus, some CPUs (x86) are more strongly (acq/rel) ordered implicitly.
+ *
+ *   Here the corner case again:
+ *
+ *        CPU1                  CPU2
+ *     owner = 1234
+ *     ...
+ *     owner = invalid_tid
+ *     mutex_unlock()
+ *
+ *     thread 1234 dies         new thread with recycled TID 1234
+ *                              enters osdMutexLock
+ *                              'owner=invalid_tid' assignment not yet visible on this CPU
+ *                              if ( pthread_equal( owner, pthread_self() ) ) {
+ *                                    ==> ERRONEOUSLY ENTERS HERE
+ *                              }
+ */
 
 typedef struct epicsMutexOSD {
     pthread_mutex_t     lock;
-    pthread_mutexattr_t mutexAttr;
     pthread_cond_t      waitToBeOwner;
-#if defined(_POSIX_THREAD_PROCESS_SHARED) && _POSIX_THREAD_PROCESS_SHARED > 0
-    pthread_condattr_t  condAttr;
-#endif /*_POSIX_THREAD_PROCESS_SHARED*/
     int                 count;
     int                 owned;  /* TRUE | FALSE */
     pthread_t           ownerTid;
@@ -180,40 +321,13 @@ epicsMutexOSD * epicsMutexOsdCreate(void) {
     if(!pmutex)
         return NULL;
 
-    status = pthread_mutexattr_init(&pmutex->mutexAttr);
-    if(status)
-        goto fail;
+    epicsPosixMutexMustInit(&pmutex->lock, posixMutexDefault);
 
-#if defined(_POSIX_THREAD_PRIO_INHERIT) && _POSIX_THREAD_PRIO_INHERIT > 0
-    status = pthread_mutexattr_setprotocol(
-        &pmutex->mutexAttr,PTHREAD_PRIO_INHERIT);
-    if (errVerbose) checkStatus(status, "pthread_mutexattr_setprotocal");
-#endif /*_POSIX_THREAD_PRIO_INHERIT*/
-
-    status = pthread_mutex_init(&pmutex->lock, &pmutex->mutexAttr);
-    if(status)
-        goto dattr;
-
-#if defined(_POSIX_THREAD_PROCESS_SHARED) && _POSIX_THREAD_PROCESS_SHARED > 0
-    status = pthread_condattr_init(&pmutex->condAttr);
-    checkStatus(status, "pthread_condattr_init");
-    status = pthread_condattr_setpshared(&pmutex->condAttr,
-        PTHREAD_PROCESS_PRIVATE);
-    checkStatus(status, "pthread_condattr_setpshared");
-    status = pthread_cond_init(&pmutex->waitToBeOwner, &pmutex->condAttr);
-#else
     status = pthread_cond_init(&pmutex->waitToBeOwner, 0);
-#endif /*_POSIX_THREAD_PROCESS_SHARED*/
-    if(status)
-        goto dmutex;
+    if(!status)
+        return pmutex;
 
-    return pmutex;
-
-dmutex:
     pthread_mutex_destroy(&pmutex->lock);
-dattr:
-    pthread_mutexattr_destroy(&pmutex->mutexAttr);
-fail:
     free(pmutex);
     return NULL;
 }
@@ -224,13 +338,8 @@ void epicsMutexOsdDestroy(struct epicsMutexOSD * pmutex)
 
     status = pthread_cond_destroy(&pmutex->waitToBeOwner);
     checkStatus(status, "pthread_cond_destroy");
-#if defined(_POSIX_THREAD_PROCESS_SHARED) && _POSIX_THREAD_PROCESS_SHARED > 0
-    status = pthread_condattr_destroy(&pmutex->condAttr);
-#endif /*_POSIX_THREAD_PROCESS_SHARED*/
     status = pthread_mutex_destroy(&pmutex->lock);
     checkStatus(status, "pthread_mutex_destroy");
-    status = pthread_mutexattr_destroy(&pmutex->mutexAttr);
-    checkStatus(status, "pthread_mutexattr_destroy");
     free(pmutex);
 }
 
@@ -331,4 +440,4 @@ void epicsMutexOsdShow(struct epicsMutexOSD *pmutex,unsigned int level)
     printf("ownerTid %p count %d owned %d\n",
         (void *)pmutex->ownerTid, pmutex->count, pmutex->owned);
 }
-#endif /*defined(_XOPEN_SOURCE) && (_XOPEN_SOURCE)>=500 */
+#endif /* #ifdef HAVE_RECURSIVE_MUTEX */

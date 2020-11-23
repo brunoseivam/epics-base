@@ -333,6 +333,11 @@ TESTS += nonEpicsThreadPriorityTest
 endif
 endif
 
+TESTPROD_HOST_Linux += epicsMutexPriorityInversionTest
+epicsMutexPriorityInversionTest_SRCS += epicsMutexPriorityInversionTest.c
+epicsMutexPriorityInversionTest_SYS_LIBS_Linux += pthread rt
+TESTSCRIPTS_HOST_Linux+=epicsMutexPriorityInversionTest.t
+
 include $(TOP)/configure/RULES
 
 rtemsTestData.c : $(TESTFILES) $(TOOLS)/epicsMakeMemFs.pl
