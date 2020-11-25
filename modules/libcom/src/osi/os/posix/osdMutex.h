@@ -19,11 +19,9 @@
 extern "C" {
 #endif
 
-typedef enum {posixMutexDefault = 0, posixMutexRecursive = 1} EpicsPosixMutexProperty;
-
-/* Returns NULL if requested set of properties is not supported */
-epicsShareFunc pthread_mutexattr_t * epicsShareAPI epicsPosixMutexAttrGet (EpicsPosixMutexProperty);
-epicsShareFunc int                   epicsShareAPI epicsPosixMutexInit    (pthread_mutex_t *,EpicsPosixMutexProperty);
+/* Returns ENOTSUP if requested mutextype is not supported */
+/* At the moment, only PTHREAD_MUTEX_NORMAL and PTHREAD_MUTEX_RECURSIVE are supported */
+epicsShareFunc int epicsShareAPI epicsPosixMutexInit(pthread_mutex_t *,int mutextype);
 
 #ifdef __cplusplus
 }

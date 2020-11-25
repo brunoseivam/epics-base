@@ -51,7 +51,7 @@ LIBCOM_API epicsEventId epicsEventCreate(epicsEventInitialState init)
     epicsEventId pevent = malloc(sizeof(*pevent));
 
     if (pevent) {
-        int status = epicsPosixMutexInit(&pevent->mutex, posixMutexDefault);
+        int status = epicsPosixMutexInit(&pevent->mutex, PTHREAD_MUTEX_NORMAL);
 
         pevent->isFull = (init == epicsEventFull);
         if (status) {

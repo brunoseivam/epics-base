@@ -55,7 +55,6 @@
 /* Global var - pthread_once does not support passing args but it is more efficient
  * then epicsThreadOnce which always acquires a mutex.
  */
-static pthread_mutexattr_t globalAttrDefault;
 #ifdef HAVE_RECURSIVE_MUTEX
 static pthread_mutexattr_t globalAttrRecursive;
 #endif
@@ -92,8 +91,6 @@ static void globalAttrInit()
 {
     int status;
 
-    setAttrDefaults( &globalAttrDefault );
-
 #ifdef HAVE_RECURSIVE_MUTEX
     setAttrDefaults( &globalAttrRecursive );
     status = pthread_mutexattr_settype(&globalAttrRecursive, PTHREAD_MUTEX_RECURSIVE);
@@ -101,32 +98,26 @@ static void globalAttrInit()
 #endif
 }
 
-epicsShareFunc pthread_mutexattr_t * epicsShareAPI epicsPosixMutexAttrGet (EpicsPosixMutexProperty p)
+epicsShareFunc int epicsShareAPI epicsPosixMutexInit (pthread_mutex_t *m, int mutextype)
 {
+    pthread_mutexattr_t *atts;
     int status;
 
     status = pthread_once( &globalAttrInitOnce, globalAttrInit );
     checkStatusQuit(status,"pthread_once","epicsPosixMutexAttrGet");
-    switch ( p ) {
-        default:
-        case posixMutexDefault:
+
+    switch (mutextype) {
+        case PTHREAD_MUTEX_DEFAULT:
+            atts = NULL;
             break;
-        case posixMutexRecursive:
 #ifdef HAVE_RECURSIVE_MUTEX
-            return &globalAttrRecursive;
-#else
-            return 0;
+        case PTHREAD_MUTEX_RECURSIVE:
+            atts = &globalAttrRecursive;
+            break;
 #endif
+        default:
+            return ENOTSUP;
     }
-    return &globalAttrDefault;
-}
-
-epicsShareFunc int epicsShareAPI epicsPosixMutexInit (pthread_mutex_t *m, EpicsPosixMutexProperty p)
-{
-    pthread_mutexattr_t *atts = epicsPosixMutexAttrGet( p );
-
-    if ( ! atts )
-        return ENOTSUP;
     return pthread_mutex_init(m, atts);
 }
 
@@ -161,7 +152,7 @@ epicsMutexOSD * epicsMutexOsdCreate(void) {
     if(!pmutex)
         return NULL;
 
-    status = epicsPosixMutexInit(&pmutex->lock, posixMutexRecursive);
+    status = epicsPosixMutexInit(&pmutex->lock, PTHREAD_MUTEX_RECURSIVE);
     if (!status)
         return pmutex;
 
@@ -240,7 +231,7 @@ epicsMutexOSD * epicsMutexOsdCreate(void) {
     if(!pmutex)
         return NULL;
 
-    status = epicsPosixMutexInit(&pmutex->lock, posixMutexDefault);
+    status = epicsPosixMutexInit(&pmutex->lock, 0);
     if(status)
         return NULL;
 

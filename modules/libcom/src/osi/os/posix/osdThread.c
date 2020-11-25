@@ -327,9 +327,9 @@ static void once(void)
     int status;
 
     pthread_key_create(&getpthreadInfo,0);
-    status = epicsPosixMutexInit(&onceLock,posixMutexDefault);
+    status = epicsPosixMutexInit(&onceLock,PTHREAD_MUTEX_NORMAL);
     checkStatusQuit(status,"epicsPosixMutexInit","epicsThreadInit");
-    status = epicsPosixMutexInit(&listLock,posixMutexDefault);
+    status = epicsPosixMutexInit(&listLock,PTHREAD_MUTEX_NORMAL);
     checkStatusQuit(status,"epicsPosixMutexInit","epicsThreadInit");
     pcommonAttr = calloc(1,sizeof(commonAttr));
     if(!pcommonAttr) checkStatusOnceQuit(errno,"calloc","epicsThreadInit");
