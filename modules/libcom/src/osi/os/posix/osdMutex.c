@@ -233,78 +233,6 @@ void epicsMutexOsdShow(struct epicsMutexOSD * pmutex, unsigned int level)
 
 #else /* #ifdef HAVE_RECURSIVE_MUTEX */
 
-/* The standard EPICS implementation of a recursive mutex (in absence of native support)
- * does not allow for priority-inheritance:
- * a low priority thread may hold the ('soft-') mutex, i.e., may be preempted in the
- * critical section without the high-priority thread noticing (because the HP-thread is
- * sleeping on the condvar and not waiting for the mutex).
- *
- * A better implementation could be:
- *
- *  struct epicsMutexOSD {
- *    pthread_mutex_t   mtx;
- *    atomic<pthread_t> owner;
- *    unsigned          count;
- *  };
- *
- * void mutexLock(struct epicsMutexOSD *m)
- * {
- *   pthread_t currentOwner = atomic_load(&m->owner, acquire);   
- *
- *   if ( pthread_equal(currentOwner, pthread_self()) ) {
- *     m->count++;
- *     return;
- *   }
- *
- *   pthread_mutex_lock(&m->mtx);
- *   // ordering of this write to 'owner' is irrelevant since it doesn't matter
- *   // if another thread performing the test above sees the 'invalid' or already
- *   // 'our' TID. 
- *   atomic_store(&m->owner, pthread_self(), relaxed);
- *   // 'count' is only ever accessed with 'mtx' held
- *   m->count = 1;
- * }
- *
- * void mutexUnlock(struct epicsMutexOSD *o)
- * {
- *   o->count--;
- *   if ( o->count == 0 ) {
- *     // acquire-release ordering between here and 'mutexLock' above'!
- *     // Theoretically (but extremely unlikely) the executing thread
- *     // may go away and a newly created thread with the same (recycled)
- *     // TID on a different CPU could still see the old TID in mutexLock
- *     // and believe it already owns the mutex...
- *     atomic_store(&m->owner, invalid_thread_id, release);
- *     pthread_mutex_unlock( &o->mtx );
- *   }
- *
- * The 'invalid_thread_id' could be an ID of a permanently suspended dummy thread
- * (pthread does not define a 'NULL' ID and you don't want to get into an 'ABA'-sort
- * of situation where 'mutexLock' believes to be the current owner because the 'invalid'
- * ID is a 'recycled' thread id).
- *
- * Without atomic operations we'd have to introduce a second mutex to protect the 'owner'
- * member ('count' is only ever accessed with the mutex held). But that would then
- * lead to two extra lock/unlock pairs in 'mutexLock'. A dirty version would ignore that
- * and rely on pthread_t fitting in a CPU word and the acquire/release corner-case mentioned
- * above to never happen. Plus, some CPUs (x86) are more strongly (acq/rel) ordered implicitly.
- *
- *   Here the corner case again:
- *
- *        CPU1                  CPU2
- *     owner = 1234
- *     ...
- *     owner = invalid_tid
- *     mutex_unlock()
- *
- *     thread 1234 dies         new thread with recycled TID 1234
- *                              enters osdMutexLock
- *                              'owner=invalid_tid' assignment not yet visible on this CPU
- *                              if ( pthread_equal( owner, pthread_self() ) ) {
- *                                    ==> ERRONEOUSLY ENTERS HERE
- *                              }
- */
-
 typedef struct epicsMutexOSD {
     pthread_mutex_t     lock;
     pthread_cond_t      waitToBeOwner;
