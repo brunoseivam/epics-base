@@ -130,15 +130,6 @@ epicsShareFunc int epicsShareAPI epicsPosixMutexInit (pthread_mutex_t *m, EpicsP
     return pthread_mutex_init(m, atts);
 }
 
-epicsShareFunc void epicsShareAPI epicsPosixMutexMustInit (pthread_mutex_t *m, EpicsPosixMutexProperty p)
-{
-    int status;
-
-    status = epicsPosixMutexInit(m, p);
-    checkStatusQuit(status,"pthread_mutex_init","epicsMustInitPosixMutex");
-}
-
-
 static int mutexLock(pthread_mutex_t *id)
 {
     int status;
@@ -249,7 +240,9 @@ epicsMutexOSD * epicsMutexOsdCreate(void) {
     if(!pmutex)
         return NULL;
 
-    epicsPosixMutexMustInit(&pmutex->lock, posixMutexDefault);
+    status = epicsPosixMutexInit(&pmutex->lock, posixMutexDefault);
+    if(status)
+        return NULL;
 
     status = pthread_cond_init(&pmutex->waitToBeOwner, 0);
     if(!status)

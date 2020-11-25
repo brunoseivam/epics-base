@@ -24,7 +24,6 @@ typedef enum {posixMutexDefault = 0, posixMutexRecursive = 1} EpicsPosixMutexPro
 /* Returns NULL if requested set of properties is not supported */
 epicsShareFunc pthread_mutexattr_t * epicsShareAPI epicsPosixMutexAttrGet (EpicsPosixMutexProperty);
 epicsShareFunc int                   epicsShareAPI epicsPosixMutexInit    (pthread_mutex_t *,EpicsPosixMutexProperty);
-epicsShareFunc void                  epicsShareAPI epicsPosixMutexMustInit(pthread_mutex_t *,EpicsPosixMutexProperty);
 
 #ifdef __cplusplus
 }
