@@ -98,7 +98,7 @@ static void globalAttrInit()
 #endif
 }
 
-epicsShareFunc int epicsShareAPI epicsPosixMutexInit (pthread_mutex_t *m, int mutextype)
+epicsShareFunc int epicsShareAPI osdPosixMutexInit (pthread_mutex_t *m, int mutextype)
 {
     pthread_mutexattr_t *atts;
     int status;
@@ -152,7 +152,7 @@ epicsMutexOSD * epicsMutexOsdCreate(void) {
     if(!pmutex)
         return NULL;
 
-    status = epicsPosixMutexInit(&pmutex->lock, PTHREAD_MUTEX_RECURSIVE);
+    status = osdPosixMutexInit(&pmutex->lock, PTHREAD_MUTEX_RECURSIVE);
     if (!status)
         return pmutex;
 
@@ -231,7 +231,7 @@ epicsMutexOSD * epicsMutexOsdCreate(void) {
     if(!pmutex)
         return NULL;
 
-    status = epicsPosixMutexInit(&pmutex->lock, 0);
+    status = osdPosixMutexInit(&pmutex->lock, PTHREAD_MUTEX_NORMAL);
     if(status)
         return NULL;
 
