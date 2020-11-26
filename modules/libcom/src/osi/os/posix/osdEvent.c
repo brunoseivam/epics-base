@@ -23,7 +23,7 @@
 #include "epicsEvent.h"
 #include "epicsTime.h"
 #include "errlog.h"
-#include "osdMutex.h"
+#include "osdPosixMutexPriv.h"
 
 struct epicsEventOSD {
     pthread_mutex_t mutex;

@@ -32,6 +32,7 @@
 #include "ellLib.h"
 #include "epicsEvent.h"
 #include "epicsMutex.h"
+#include "osdPosixMutexPriv.h"
 #include "epicsString.h"
 #include "epicsThread.h"
 #include "cantProceed.h"

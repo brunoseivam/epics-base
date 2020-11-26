@@ -22,6 +22,7 @@
 #include <ctype.h>
 
 #include "epicsMutex.h"
+#include "osdPosixMutexPriv.h"
 #include "cantProceed.h"
 #include "epicsTime.h"
 #include "errlog.h"

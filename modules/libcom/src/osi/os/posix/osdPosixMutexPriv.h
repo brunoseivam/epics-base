@@ -7,4 +7,24 @@
 * EPICS Base is distributed subject to a Software License Agreement found
 * in file LICENSE that is included with this distribution.
 \*************************************************************************/
-/* for a pure posix implementation no osdMutex.h definitions are needed*/
+
+#ifndef osdPosixMutexPrivh
+#define osdPosixMutexPrivh
+
+#include <pthread.h>
+
+#include "shareLib.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/* Returns ENOTSUP if requested mutextype is not supported */
+/* At the moment, only PTHREAD_MUTEX_NORMAL and PTHREAD_MUTEX_RECURSIVE are supported */
+epicsShareFunc int epicsShareAPI osdPosixMutexInit(pthread_mutex_t *,int mutextype);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* osdPosixMutexPrivh */

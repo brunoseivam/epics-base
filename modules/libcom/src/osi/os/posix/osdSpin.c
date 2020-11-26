@@ -109,7 +109,7 @@ void epicsSpinUnlock(epicsSpinId spin) {
  *  POSIX MUTEX IMPLEMENTATION
  */
 
-#include <osdMutex.h>
+#include <osdPosixMutexPriv.h>
 
 typedef struct epicsSpin {
     pthread_mutex_t lock;
