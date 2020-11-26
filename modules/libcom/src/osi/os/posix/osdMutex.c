@@ -19,7 +19,6 @@
 #include <errno.h>
 #include <unistd.h>
 #include <pthread.h>
-#include <ctype.h>
 
 #include "epicsMutex.h"
 #include "osdPosixMutexPriv.h"
@@ -27,7 +26,6 @@
 #include "epicsTime.h"
 #include "errlog.h"
 #include "epicsAssert.h"
-#include "envDefs.h"
 
 #define checkStatus(status,message) \
     if((status)) { \
@@ -68,24 +66,18 @@ static void setAttrDefaults(pthread_mutexattr_t *a)
     status = pthread_mutexattr_init(a);
     checkStatusQuit(status,"pthread_mutexattr_init","setAttrDefaults");
 
-    {
-        const char *p = envGetConfigParamPtr(&EPICS_MUTEX_USE_PRIORITY_INHERITANCE);
-        char        c = p ? toupper(p[0]) : 'N';
-        if ( 'T' == c || 'Y' == c || '1' == c ) {
 #if defined _POSIX_THREAD_PRIO_INHERIT
-            status = pthread_mutexattr_setprotocol(a, PTHREAD_PRIO_INHERIT);
-            if (errVerbose) checkStatus(status, "pthread_mutexattr_setprotocol(PTHREAD_PRIO_INHERIT)");
+    status = pthread_mutexattr_setprotocol(a, PTHREAD_PRIO_INHERIT);
+    if (errVerbose) checkStatus(status, "pthread_mutexattr_setprotocol(PTHREAD_PRIO_INHERIT)");
 #ifndef HAVE_RECURSIVE_MUTEX
-            /* The implementation based on a condition variable below does not support 
-             * priority-inheritance!
-             */
-            fprintf(stderr,"WARNING: PRIORITY-INHERITANCE UNAVAILABLE for epicsMutex\n");
+    /* The implementation based on a condition variable below does not support
+     * priority-inheritance!
+     */
+    fprintf(stderr,"WARNING: PRIORITY-INHERITANCE UNAVAILABLE for epicsMutex\n");
 #endif
 #else
-            fprintf(stderr,"WARNING: PRIORITY-INHERITANCE UNAVAILABLE OR NOT COMPILED IN\n");
+    fprintf(stderr,"WARNING: PRIORITY-INHERITANCE UNAVAILABLE OR NOT COMPILED IN\n");
 #endif
-        }
-    }
 }
 
 static void globalAttrInit()

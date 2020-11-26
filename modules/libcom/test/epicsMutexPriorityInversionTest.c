@@ -210,11 +210,6 @@ MAIN(epicsMutexPriorityInversionTest)
     long      hiPriStalledTimeUs;
     struct    sched_param p_pri;
 
-    /* This happens too late - i.e., after initialization of libCom
-     * user must set in the environment...
-    epicsEnvSet("EPICS_MUTEX_USE_PRIORITY_INHERITANCE","YES");
-     */
-
     a.mtx  = epicsMutexMustCreate();
     a.sync = epicsEventMustCreate( epicsEventEmpty );
     a.done = epicsEventMustCreate( epicsEventEmpty );

@@ -20,10 +20,6 @@ should also be read to understand what has changed since earlier releases.
 ### Priority inversion safe posix mutexes
 
 On Posix systems, epicsMutex now support priority inheritance.
-For backward compatibility, the environment variable
-`EPICS_MUTEX_USE_PRIORITY_INHERITANCE` must be set to `YES` before
-the IOC is started to use this feature. The IOC needs to run with
-SCHED_FIFO engaged, which usually means to run it as root.
 
 ### Filters in database input links
 
