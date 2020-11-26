@@ -39,8 +39,6 @@
         cantProceed((method)); \
     }
 
-/* Until these can be demonstrated to work leave them undefined*/
-/* On solaris 8 _POSIX_THREAD_PRIO_INHERIT fails*/
 #if defined(DONT_USE_POSIX_THREAD_PRIORITY_SCHEDULING)
 #undef _POSIX_THREAD_PRIO_INHERIT
 #endif
