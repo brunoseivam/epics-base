@@ -66,8 +66,6 @@ static void setAttrDefaults(pthread_mutexattr_t *a)
 #if defined _POSIX_THREAD_PRIO_INHERIT
     status = pthread_mutexattr_setprotocol(a, PTHREAD_PRIO_INHERIT);
     if (errVerbose) checkStatus(status, "pthread_mutexattr_setprotocol(PTHREAD_PRIO_INHERIT)");
-#else
-    fprintf(stderr,"WARNING: PRIORITY-INHERITANCE UNAVAILABLE OR NOT COMPILED IN\n");
 #endif
 }
 
