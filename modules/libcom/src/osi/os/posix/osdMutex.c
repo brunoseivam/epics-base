@@ -49,12 +49,11 @@
 #undef  HAVE_RECURSIVE_MUTEX
 #endif
 
+#ifdef HAVE_RECURSIVE_MUTEX
 /* Global var - pthread_once does not support passing args but it is more efficient
  * then epicsThreadOnce which always acquires a mutex.
  */
-#ifdef HAVE_RECURSIVE_MUTEX
 static pthread_mutexattr_t globalAttrRecursive;
-#endif
 static pthread_once_t      globalAttrInitOnce = PTHREAD_ONCE_INIT;
 
 static void setAttrDefaults(pthread_mutexattr_t *a)
@@ -67,12 +66,6 @@ static void setAttrDefaults(pthread_mutexattr_t *a)
 #if defined _POSIX_THREAD_PRIO_INHERIT
     status = pthread_mutexattr_setprotocol(a, PTHREAD_PRIO_INHERIT);
     if (errVerbose) checkStatus(status, "pthread_mutexattr_setprotocol(PTHREAD_PRIO_INHERIT)");
-#ifndef HAVE_RECURSIVE_MUTEX
-    /* The implementation based on a condition variable below does not support
-     * priority-inheritance!
-     */
-    fprintf(stderr,"WARNING: PRIORITY-INHERITANCE UNAVAILABLE for epicsMutex\n");
-#endif
 #else
     fprintf(stderr,"WARNING: PRIORITY-INHERITANCE UNAVAILABLE OR NOT COMPILED IN\n");
 #endif
@@ -82,20 +75,21 @@ static void globalAttrInit()
 {
     int status;
 
-#ifdef HAVE_RECURSIVE_MUTEX
     setAttrDefaults( &globalAttrRecursive );
     status = pthread_mutexattr_settype(&globalAttrRecursive, PTHREAD_MUTEX_RECURSIVE);
     checkStatusQuit(status, "pthread_mutexattr_settype(PTHREAD_MUTEX_RECURSIVE)", "globalAttrInit");
-#endif
 }
+#endif
 
 epicsShareFunc int epicsShareAPI osdPosixMutexInit (pthread_mutex_t *m, int mutextype)
 {
     pthread_mutexattr_t *atts;
+#ifdef HAVE_RECURSIVE_MUTEX
     int status;
 
     status = pthread_once( &globalAttrInitOnce, globalAttrInit );
     checkStatusQuit(status,"pthread_once","epicsPosixMutexAttrGet");
+#endif
 
     switch (mutextype) {
         case PTHREAD_MUTEX_DEFAULT:
