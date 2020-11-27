@@ -20,7 +20,7 @@ extern "C" {
 #endif
 
 /* Returns ENOTSUP if requested mutextype is not supported */
-/* At the moment, only PTHREAD_MUTEX_NORMAL and PTHREAD_MUTEX_RECURSIVE are supported */
+/* At the moment, only 0 (default non recursive mutex) and PTHREAD_MUTEX_RECURSIVE are supported */
 epicsShareFunc int epicsShareAPI osdPosixMutexInit(pthread_mutex_t *,int mutextype);
 
 #ifdef __cplusplus
