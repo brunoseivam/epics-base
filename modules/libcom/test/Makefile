@@ -333,10 +333,12 @@ TESTS += nonEpicsThreadPriorityTest
 endif
 endif
 
-TESTPROD_HOST_Linux += epicsMutexPriorityInversionTest
+ifeq ($(POSIX),YES)
+TESTPROD_HOST += epicsMutexPriorityInversionTest
 epicsMutexPriorityInversionTest_SRCS += epicsMutexPriorityInversionTest.c
 epicsMutexPriorityInversionTest_SYS_LIBS_Linux += pthread rt
-TESTSCRIPTS_HOST_Linux+=epicsMutexPriorityInversionTest.t
+TESTSCRIPTS_HOST+=epicsMutexPriorityInversionTest.t
+endif
 
 include $(TOP)/configure/RULES
 
