@@ -49,24 +49,18 @@
 static pthread_mutexattr_t globalAttrRecursive;
 static pthread_once_t      globalAttrInitOnce = PTHREAD_ONCE_INIT;
 
-static void setAttrDefaults(pthread_mutexattr_t *a)
-{
-    int status;
-
-    status = pthread_mutexattr_init(a);
-    checkStatusQuit(status,"pthread_mutexattr_init","setAttrDefaults");
-
-#if defined _POSIX_THREAD_PRIO_INHERIT
-    status = pthread_mutexattr_setprotocol(a, PTHREAD_PRIO_INHERIT);
-    if (errVerbose) checkStatus(status, "pthread_mutexattr_setprotocol(PTHREAD_PRIO_INHERIT)");
-#endif
-}
-
 static void globalAttrInit()
 {
     int status;
 
-    setAttrDefaults( &globalAttrRecursive );
+    status = pthread_mutexattr_init(&globalAttrRecursive);
+    checkStatusQuit(status,"pthread_mutexattr_init","globalAttrInit");
+
+#if defined _POSIX_THREAD_PRIO_INHERIT
+    status = pthread_mutexattr_setprotocol(&globalAttrRecursive, PTHREAD_PRIO_INHERIT);
+    if (errVerbose) checkStatus(status, "pthread_mutexattr_setprotocol(PTHREAD_PRIO_INHERIT)");
+#endif
+
     status = pthread_mutexattr_settype(&globalAttrRecursive, PTHREAD_MUTEX_RECURSIVE);
     checkStatusQuit(status, "pthread_mutexattr_settype(PTHREAD_MUTEX_RECURSIVE)", "globalAttrInit");
 }
