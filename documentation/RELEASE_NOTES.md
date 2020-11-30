@@ -20,6 +20,8 @@ should also be read to understand what has changed since earlier releases.
 ### Priority inversion safe posix mutexes
 
 On Posix systems, epicsMutex now support priority inheritance.
+Support for Posix implementations before POSIX.1-2001 (_XOPEN_SOURCE < 500,
+glibc version < 2.3.3) has been dropped.
 
 ### Filters in database input links
 
