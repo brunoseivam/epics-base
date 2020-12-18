@@ -13,15 +13,13 @@
 
 #include <pthread.h>
 
-#include "shareLib.h"
-
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 /* Returns ENOTSUP if requested mutextype is not supported */
 /* At the moment, only 0 (default non recursive mutex) and PTHREAD_MUTEX_RECURSIVE are supported */
-epicsShareFunc int epicsShareAPI osdPosixMutexInit(pthread_mutex_t *,int mutextype);
+int osdPosixMutexInit(pthread_mutex_t *,int mutextype);
 
 #ifdef __cplusplus
 }

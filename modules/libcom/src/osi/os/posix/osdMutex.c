@@ -65,7 +65,7 @@ static void globalAttrInit()
     checkStatusQuit(status, "pthread_mutexattr_settype(PTHREAD_MUTEX_RECURSIVE)", "globalAttrInit");
 }
 
-epicsShareFunc int epicsShareAPI osdPosixMutexInit (pthread_mutex_t *m, int mutextype)
+int osdPosixMutexInit (pthread_mutex_t *m, int mutextype)
 {
     pthread_mutexattr_t *atts;
     int status;
