@@ -202,7 +202,7 @@ static void miPriThread(void *parm)
 }
 
 
-#define NUM_TESTS 8
+#define NUM_TESTS 7
 
 MAIN(epicsMutexPriorityInversionTest)
 {
@@ -227,12 +227,11 @@ MAIN(epicsMutexPriorityInversionTest)
 
     p_pri.sched_priority = sched_get_priority_min( SCHED_FIFO );
     if ( sched_setscheduler( 0, SCHED_FIFO, &p_pri ) ) {
-        testDiag("SCHED_FIFO not engaged - maybe you need to be root to run this test?");
-        testFail("sched_setscheduler(SCHED_FIFO)");
-        testSkip( NUM_TESTS - 1, "SCHED_FIFO not engaged" );
+        testDiag("SCHED_FIFO not engaged - cannot run this test");
+        testSkip( NUM_TESTS, "SCHED_FIFO not engaged" );
         return testDone();
     } else {
-        testPass("SCHED_FIFO can be used");
+        testDiag("SCHED_FIFO is in use");
     }
 
     setThreadAffinity( THE_CPU );
