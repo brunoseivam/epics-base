@@ -223,12 +223,6 @@ MAIN(epicsMutexPriorityInversionTest)
 
     testPlan(NUM_TESTS);
 
-#ifndef HAVE_CPU_AFFINITY
-#warning "glibc too old for this test: pthread_setaffinity_np() not available..."
-    testSkip( NUM_TESTS, "glibc too old for this test: pthread_setaffinity_np() not implemented!" );
-    return testDone();
-#endif
-
     p_pri.sched_priority = sched_get_priority_min( SCHED_FIFO );
     if ( sched_setscheduler( 0, SCHED_FIFO, &p_pri ) ) {
         testDiag("SCHED_FIFO not engaged - cannot run this test");
