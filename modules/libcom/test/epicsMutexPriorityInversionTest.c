@@ -15,7 +15,7 @@
 
 #define  THE_CPU   0
 
-#define  SPIN_SECS 3000000
+#define  SPIN_SECS 5000000
 
 #if defined(__GLIBC__) && defined(__GLIBC_PREREQ) && __GLIBC_PREREQ(2,4)
 #define HAVE_CPU_AFFINITY
@@ -248,7 +248,7 @@ MAIN(epicsMutexPriorityInversionTest)
     hiPriStalledTimeUs = a.end - (a.lim - SPIN_SECS);
 
     testDiag("High-priority thread stalled for %li us\n", hiPriStalledTimeUs);
-    testOk1( hiPriStalledTimeUs <  200 );
+    testOk1( hiPriStalledTimeUs < 1000 );
 
     epicsEventDestroy( a.done );
     epicsEventDestroy( a.sync );
